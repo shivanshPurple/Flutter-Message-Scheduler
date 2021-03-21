@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
@@ -13,25 +14,27 @@ import 'package:telephony/telephony.dart';
 const platform = const MethodChannel("com.flutter.epic/epic");
 
 SharedPreferences prefs;
+Telephony telephony = Telephony.instance;
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    new FlutterLocalNotificationsPlugin();
 
 @pragma("vm:entry-point")
 widget() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await checkSharedPrefs();
   platform.setMethodCallHandler((call) async {
     if (call.method == "kotlin") {
-      prefs = await SharedPreferences.getInstance();
-      if (prefs.getBool("whatsapp")) asyncNotification();
-      if (prefs.getBool("sms")) sendSms();
+      asyncNotification();
     }
   });
 }
 
 intitializeApp() async {
-  SharedPreferences prefs = await SharedPreferences.getInstance();
+  await checkSharedPrefs();
   if (!prefs.containsKey("good")) {
     Settings settings = new Settings();
     prefs.setBool("whatsapp", true);
-    prefs.setBool("sms", false);
+    prefs.setBool("sms", true);
     prefs.setBool("randomEmojis", true);
     prefs.setString("numEmoji", "5");
     prefs.setString("number", "919991873735");
@@ -40,11 +43,30 @@ intitializeApp() async {
     prefs.setStringList("nickname", settings.getNicknamesList());
     prefs.setStringList("emoji", settings.getEmojiList());
   }
+
+  await telephony.requestPhoneAndSmsPermissions;
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  prefs = await SharedPreferences.getInstance();
+  await checkSharedPrefs();
+
+  final NotificationAppLaunchDetails notificationAppLaunchDetails =
+      await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+
+  if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
+    String text = generateMessage();
+    if (prefs.getBool("whatsapp")) {
+      await platform.invokeMethod(
+          "notifyKotlin", {"text": text, "number": prefs.getString("number")});
+    }
+
+    if (prefs.getBool("sms")) {
+      String text = generateMessage();
+      String number = prefs.getString("number").substring(2, 12);
+      await platform.invokeMethod("sendSms", {"text": text, "number": number});
+    }
+  }
 
   platform.invokeMethod("setAlarm", {"hour": "7", "minutes": "00"});
   await intitializeApp();
@@ -157,13 +179,14 @@ class _SetupListsState extends State<SetupLists> {
               tiles: [
                 SettingsTile.switchTile(
                   title: "Whatsapp",
-                  subtitle: "Notification will be shown",
+                  subtitle: "Message is automatically typed but not sent",
                   leading: FaIcon(FontAwesomeIcons.whatsapp),
                   switchValue: prefs.getBool("whatsapp"),
                   onToggle: (bool value) {
                     prefs.setBool("whatsapp", value);
                     setState(() {});
                   },
+                  subtitleMaxLines: 2,
                 ),
                 SettingsTile.switchTile(
                   title: "SMS Messages",
@@ -179,13 +202,21 @@ class _SetupListsState extends State<SetupLists> {
                     title: "Test Whatsapp",
                     leading: Icon(Icons.notifications_none_rounded),
                     onPressed: (BuildContext context) {
-                      asyncNotification();
+                      platform.invokeMethod("notifyKotlin",
+                          {"text": generateMessage(), "number": prefs.getString("number")});
                     }),
                 SettingsTile(
                     title: "Test SMS",
                     leading: Icon(Icons.notifications_none_rounded),
                     onPressed: (BuildContext context) {
-                      sendSms();
+                      String text = generateMessage();
+                      String number =
+                          prefs.getString("number").substring(2, 12);
+                      // Telephony telephony = Telephony.instance;
+                      // telephony.sendSms(
+                      //     to: prefs.getString("number").substring(2, 12), message: text);
+                      platform.invokeMethod(
+                          "sendSms", {"text": text, "number": number});
                     })
               ])
         ],
@@ -218,7 +249,6 @@ class _SetupListsState extends State<SetupLists> {
   }
 
   makeList(String key, BuildContext context) {
-    SharedPreferences.getInstance();
     List<Widget> c = [];
     List<String> list = prefs.getStringList(key);
     String text = "${key[0].toUpperCase()}${key.substring(1)}";
@@ -283,33 +313,29 @@ class _SetupListsState extends State<SetupLists> {
                   fontWeight: FontWeight.bold, color: Colors.deepPurple[700]),
             ),
             SizedBox(height: 10),
-            Divider(),
             SizedBox(height: 10),
             Wrap(
               alignment: WrapAlignment.start,
               direction: Axis.horizontal,
               children: c.toList(),
-            )
+            ),
+            Divider(),
           ],
         ));
   }
 
   void removePrefs(String key, String i) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await checkSharedPrefs();
     List<String> list = prefs.getStringList(key);
     list.remove(i);
     prefs.setStringList(key, list);
   }
 
   void updatePrefs(String key, String i) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await checkSharedPrefs();
     List<String> list = prefs.getStringList(key);
     list.add(i);
     prefs.setStringList(key, list);
-  }
-
-  Future<SharedPreferences> getSharedPref() async {
-    return await SharedPreferences.getInstance();
   }
 }
 
@@ -332,11 +358,12 @@ Future<void> asyncNotification() async {
   InitializationSettings initializationSettings =
       InitializationSettings(android: initializationSettingsAndroid);
 
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      new FlutterLocalNotificationsPlugin();
-
   await flutterLocalNotificationsPlugin.initialize(initializationSettings,
-      onSelectNotification: onSelectNotification);
+      onSelectNotification: (String payload) async {
+    String text = generateMessage();
+    await platform.invokeMethod(
+        "notifyKotlin", {"text": text, "number": prefs.getString("number")});
+  });
 
   await flutterLocalNotificationsPlugin.show(
       0, 'GF maintainer', 'Send Good Morning!', platformChannelSpecifics);
@@ -360,17 +387,6 @@ String generateMessage() {
   return message;
 }
 
-Future onSelectNotification(String payload) async {
-  String text = generateMessage();
-  await platform.invokeMethod(
-      "notifyKotlin", {"text": text, "number": prefs.getString("number")});
-}
-
-Future<void> sendSms() async {
-  String text = generateMessage();
-  final Telephony telephony = Telephony.instance;
-  bool permissionsGranted = await telephony.requestPhoneAndSmsPermissions;
-  if (permissionsGranted)
-    telephony.sendSms(
-        to: prefs.getString("number").substring(2, 12), message: text);
+checkSharedPrefs() async {
+  if (prefs == null) prefs = await SharedPreferences.getInstance();
 }

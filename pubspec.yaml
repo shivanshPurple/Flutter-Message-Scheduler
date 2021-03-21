@@ -33,7 +33,7 @@ dependencies:
   settings_ui: ^0.6.0
   font_awesome_flutter: ^8.12.0
   telephony: ^0.1.0
-  workmanager: ^0.2.0
+  flutter_launcher_icons:
 
 dev_dependencies:
   flutter_test:
@@ -82,3 +82,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon.png"
