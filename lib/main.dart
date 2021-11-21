@@ -57,8 +57,8 @@ Future<void> main() async {
   if (notificationAppLaunchDetails?.didNotificationLaunchApp ?? false) {
     String text = generateMessage();
     if (prefs.getBool("whatsapp")) {
-      await platform.invokeMethod(
-          "notifyKotlin", {"text": text, "number": prefs.getString("number")});
+      await platform
+          .invokeMethod("notifyKotlin", {"text": text, "number": prefs.getString("number")});
     }
 
     if (prefs.getBool("sms")) {
@@ -68,7 +68,7 @@ Future<void> main() async {
     }
   }
 
-  platform.invokeMethod("setAlarm", {"hour": "7", "minutes": "00"});
+  platform.invokeMethod("setAlarm", {"hour": "6", "minutes": "00"});
   await intitializeApp();
   runApp(App());
 }
@@ -83,9 +83,7 @@ class _App extends State<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sample App',
-      theme: ThemeData(
-          primaryColor: Colors.deepPurple[700],
-          accentColor: Colors.deepPurple[700]),
+      theme: ThemeData(primaryColor: Colors.deepPurple[700], accentColor: Colors.deepPurple[700]),
       home: SetupLists(),
     );
   }
@@ -210,13 +208,11 @@ class _SetupListsState extends State<SetupLists> {
                     leading: Icon(Icons.notifications_none_rounded),
                     onPressed: (BuildContext context) {
                       String text = generateMessage();
-                      String number =
-                          prefs.getString("number").substring(2, 12);
+                      String number = prefs.getString("number").substring(2, 12);
                       // Telephony telephony = Telephony.instance;
                       // telephony.sendSms(
                       //     to: prefs.getString("number").substring(2, 12), message: text);
-                      platform.invokeMethod(
-                          "sendSms", {"text": text, "number": number});
+                      platform.invokeMethod("sendSms", {"text": text, "number": number});
                     })
               ])
         ],
@@ -267,8 +263,7 @@ class _SetupListsState extends State<SetupLists> {
             },
             child: Container(
               decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: new BorderRadius.circular(20)),
+                  color: Colors.grey[300], borderRadius: new BorderRadius.circular(20)),
               padding: EdgeInsets.fromLTRB(12, 6, 12, 6),
               margin: EdgeInsets.fromLTRB(0, 0, 12, 12),
               child: Text(
@@ -298,9 +293,8 @@ class _SetupListsState extends State<SetupLists> {
                 return alert;
               });
         },
-        child: Padding(
-            padding: EdgeInsets.fromLTRB(6, 2, 6, 2),
-            child: Icon(Icons.add, size: 24))));
+        child:
+            Padding(padding: EdgeInsets.fromLTRB(6, 2, 6, 2), child: Icon(Icons.add, size: 24))));
 
     return Container(
         margin: EdgeInsets.all(12),
@@ -309,8 +303,7 @@ class _SetupListsState extends State<SetupLists> {
           children: [
             Text(
               text,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.deepPurple[700]),
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple[700]),
             ),
             SizedBox(height: 10),
             SizedBox(height: 10),
@@ -339,15 +332,15 @@ class _SetupListsState extends State<SetupLists> {
   }
 }
 
+// Prepares the notification to send it
 Future<void> asyncNotification() async {
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails('default_notification_channel_id',
-          'Reminder notifications', 'Reminds to do things',
-          importance: Importance.max,
-          priority: Priority.high,
-          sound: RawResourceAndroidNotificationSound('spring_board'),
-          playSound: true,
-          channelShowBadge: true);
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'default_notification_channel_id', 'Reminder notifications', 'Reminds to do things',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('spring_board'),
+      playSound: true,
+      channelShowBadge: true);
 
   const NotificationDetails platformChannelSpecifics =
       NotificationDetails(android: androidPlatformChannelSpecifics);
@@ -361,14 +354,15 @@ Future<void> asyncNotification() async {
   await flutterLocalNotificationsPlugin.initialize(initializationSettings,
       onSelectNotification: (String payload) async {
     String text = generateMessage();
-    await platform.invokeMethod(
-        "notifyKotlin", {"text": text, "number": prefs.getString("number")});
+    await platform
+        .invokeMethod("notifyKotlin", {"text": text, "number": prefs.getString("number")});
   });
 
   await flutterLocalNotificationsPlugin.show(
-      0, 'GF maintainer', 'Send Good Morning!', platformChannelSpecifics);
+      0, 'Cooper Bot', 'Send Good Morning!', platformChannelSpecifics);
 }
 
+//Generates the message
 String generateMessage() {
   String message = "${(prefs.getStringList("good")..shuffle()).first} "
       "${(prefs.getStringList("morning")..shuffle()).first} "

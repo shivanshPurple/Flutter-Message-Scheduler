@@ -2,6 +2,7 @@
     package="com.example.personal_app">
 
     <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:icon="@mipmap/launcher_icon"
@@ -13,8 +14,8 @@
             android:hardwareAccelerated="true"
             android:launchMode="singleTop"
             android:showWhenLocked="true"
-            android:turnScreenOn="true"
             android:theme="@style/LaunchTheme"
+            android:turnScreenOn="true"
             android:windowSoftInputMode="adjustResize">
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
@@ -51,6 +52,12 @@
         <service
             android:name=".NotificationActivity"
             android:stopWithTask="false" />
+
+        <receiver android:name=".MyBroadcastReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 </manifest>
